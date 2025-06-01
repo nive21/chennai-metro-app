@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../data/metro_data.dart';
+import '../models/station.dart';
 
 class RouteResultScreen extends StatelessWidget {
   final String origin;
@@ -12,44 +14,45 @@ class RouteResultScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final route = getRoute(origin, destination);
+    final instructions = generateInstructions(route);
+
     return Scaffold(
       appBar: AppBar(title: const Text("Your Route")),
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          const SizedBox(height: 20),
-          Text("Route from $origin to $destination",
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: route.isEmpty
+            ? const Center(child: Text("No route found."))
+            : Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text("Route from $origin to $destination",
+                style: const TextStyle(
+                    fontSize: 18, fontWeight: FontWeight.bold)),
 
-          const SizedBox(height: 20),
+            const SizedBox(height: 20),
 
-          // Placeholder for map
-          Container(
-            height: 300,
-            color: Colors.black12,
-            alignment: Alignment.center,
-            child: const Text("🗺️ Custom Metro Map Goes Here"),
-          ),
-
-          const SizedBox(height: 20),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: const [
-                Text("1. Enter Central Metro — Platform 2",
-                    style: TextStyle(fontWeight: FontWeight.bold)),
-                Text("• A1: Near Location A"),
-                Text("• A2: Near Location B (Lift, Escalator)"),
-                Text("• A3: Near Location C"),
-                SizedBox(height: 12),
-                Text("2. Exit Alandur — Platform 2",
-                    style: TextStyle(fontWeight: FontWeight.bold)),
-                Text("• Use Gate C1 or C2"),
-              ],
+            // Map placeholder
+            Container(
+              height: 200,
+              color: Colors.grey[200],
+              alignment: Alignment.center,
+              child: const Text("🗺️ Metro Map Here"),
             ),
-          )
-        ],
+
+            const SizedBox(height: 20),
+
+            const Text(
+              "Instructions:",
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 10),
+            ...instructions
+                .split('\n')
+                .map((line) => Text("• $line"))
+                .toList(),
+          ],
+        ),
       ),
     );
   }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'route_result.dart';
+import '../data/metro_data.dart';
 
 
 class HomeScreen extends StatefulWidget {
@@ -14,7 +15,7 @@ class _HomeScreenState extends State<HomeScreen> {
   String? origin;
   String? destination;
 
-  final List<String> stations = ['Central', 'Vadapalani', 'Alandur'];
+  final List<String> stations = allStations.map((s) => s.name).toSet().toList()..sort();
 
   @override
   Widget build(BuildContext context) {
