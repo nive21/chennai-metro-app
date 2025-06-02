@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../data/metro_data.dart';
-import '../models/station.dart';
 
 class RouteResultScreen extends StatelessWidget {
   final String origin;

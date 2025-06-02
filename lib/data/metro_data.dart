@@ -1,3 +1,4 @@
+
 import '../models/station.dart';
 
 final List<MetroStation> allStations = [
@@ -55,50 +56,75 @@ List<MetroStation> getRoute(String originName, String destinationName) {
 
   if (originStations.isEmpty || destinationStations.isEmpty) return [];
 
-  // Try same line first
+  // Try direct same-line route
   for (var origin in originStations) {
     for (var dest in destinationStations) {
       if (origin.line == dest.line) {
-        final sameLineStations = allStations
-            .where((s) => s.line == origin.line)
-            .toList();
+        final sameLineStations = allStations.where((s) => s.line == origin.line).toList();
         final start = sameLineStations.indexWhere((s) => s.name == origin.name);
         final end = sameLineStations.indexWhere((s) => s.name == dest.name);
         if (start != -1 && end != -1) {
-          final range = start < end
+          return start <= end
               ? sameLineStations.sublist(start, end + 1)
               : sameLineStations.sublist(end, start + 1).reversed.toList();
-          return range;
         }
       }
     }
   }
 
-  // Fallback: use interchange station (simple logic)
-  const interchanges = ["Arignar Anna Alandur", "Puratchi Thalaivar Dr. M.G. Ramachandran Central"];
-  for (final inter in interchanges) {
-    final from = getRoute(originName, inter);
-    final to = getRoute(inter, destinationName);
-    if (from.isNotEmpty && to.isNotEmpty) {
-      return [...from, ...to.skip(1)]; // avoid repeating interchange twice
+  // Handle interchanges
+  const interchanges = [
+    "Arignar Anna Alandur",
+    "Puratchi Thalaivar Dr. M.G. Ramachandran Central"
+  ];
+
+  for (final interName in interchanges) {
+    final greenInter = allStations.firstWhere(
+          (s) => s.name == interName && s.line == "Green",
+      orElse: () => null as MetroStation,
+    );
+    final blueInter = allStations.firstWhere(
+          (s) => s.name == interName && s.line == "Blue",
+      orElse: () => null as MetroStation,
+    );
+
+    if (greenInter == null || blueInter == null) continue;
+
+    final toInter = getRoute(originName, interName);
+    final fromInter = getRoute(interName, destinationName);
+
+    if (toInter.isNotEmpty &&
+        fromInter.isNotEmpty &&
+        toInter.last.line != fromInter.first.line) {
+      return [...toInter, ...fromInter.skip(1)];
     }
   }
 
-  return []; // no route found
+  return [];
 }
 
 String generateInstructions(List<MetroStation> route) {
   if (route.isEmpty) return "No route available.";
+
   final buffer = StringBuffer();
+  int step = 1;
+
   for (int i = 0; i < route.length; i++) {
     final station = route[i];
+    final prev = i > 0 ? route[i - 1] : null;
+
     if (i == 0) {
-      buffer.writeln("1. Enter at ${station.name} — ${station.line} Line (${station.structure})");
-    } else if (station.isInterchange && route[i - 1].line != station.line) {
-      buffer.writeln("${i + 1}. Change at ${station.name} to ${station.line} Line");
-    } else if (i == route.length - 1) {
-      buffer.writeln("${i + 1}. Exit at ${station.name} — ${station.line} Line (${station.structure})");
+      buffer.writeln("$step. Enter at ${station.name} — ${station.line} Line (${station.structure})");
+      step++;
+    } else if (prev != null && station.line != prev.line) {
+      buffer.writeln("$step. Change at ${prev.name} to ${station.line} Line");
+      step++;
+    }
+
+    if (i == route.length - 1) {
+      buffer.writeln("$step. Exit at ${station.name} — ${station.line} Line (${station.structure})");
     }
   }
+
   return buffer.toString();
 }
