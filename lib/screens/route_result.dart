@@ -37,6 +37,10 @@ class RouteResultScreen extends StatelessWidget {
           InteractiveViewer(
             minScale: 0.5,
             maxScale: 2.0,
+            panEnabled: true,
+            constrained: false,
+            alignment: Alignment.topLeft,
+            boundaryMargin: const EdgeInsets.all(100),
             child: MetroMap(route: route, allStations: allStations),
           ),
           DraggableScrollableSheet(
