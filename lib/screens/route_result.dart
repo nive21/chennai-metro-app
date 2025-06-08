@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../data/metro_data.dart';
+import '../widgets/metro_map.dart';
 
 class RouteResultScreen extends StatelessWidget {
   final String origin;
@@ -22,35 +23,21 @@ class RouteResultScreen extends StatelessWidget {
         padding: const EdgeInsets.all(16.0),
         child: route.isEmpty
             ? const Center(child: Text("No route found."))
-            : Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text("Route from $origin to $destination",
-                style: const TextStyle(
-                    fontSize: 18, fontWeight: FontWeight.bold)),
-
-            const SizedBox(height: 20),
-
-            // Map placeholder
-            Container(
-              height: 200,
-              color: Colors.grey[200],
-              alignment: Alignment.center,
-              child: const Text("🗺️ Metro Map Here"),
-            ),
-
-            const SizedBox(height: 20),
-
-            const Text(
-              "Instructions:",
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-            ),
-            const SizedBox(height: 10),
-            ...instructions
-                .split('\n')
-                .map((line) => Text("• $line"))
-                .toList(),
-          ],
+            : SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              MetroMap(route: route), // <- render the 2D map
+              const SizedBox(height: 24),
+              const Text("Instructions:",
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 10),
+              ...instructions
+                  .split('\n')
+                  .map((line) => Text("• $line"))
+                  .toList(),
+            ],
+          ),
         ),
       ),
     );
