@@ -15,7 +15,7 @@ class _HomeScreenState extends State<HomeScreen> {
   String? origin;
   String? destination;
 
-  final List<String> stations = allStations.map((s) => s.name).toSet().toList()..sort();
+  final List<String> stations =  allStations.map((s) => s.name).toSet().toList()..sort();
 
   @override
   Widget build(BuildContext context) {
@@ -23,7 +23,6 @@ class _HomeScreenState extends State<HomeScreen> {
       appBar: AppBar(title: const Text('Chennai Metro')),
       body: Column(
         children: [
-          SvgPicture.asset('lib/data/base_map.svg', width: 300, height: 200),
           const SizedBox(height: 20),
           DropdownButton<String>(
             value: origin,
