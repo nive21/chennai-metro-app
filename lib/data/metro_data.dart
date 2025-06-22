@@ -79,14 +79,14 @@ List<MetroStation> getRoute(String originName, String destinationName) {
   ];
 
   for (final interName in interchanges) {
-    final greenInter = allStations.firstWhere(
-          (s) => s.name == interName && s.line == "Green",
-      orElse: () => null as MetroStation,
-    );
-    final blueInter = allStations.firstWhere(
-          (s) => s.name == interName && s.line == "Blue",
-      orElse: () => null as MetroStation,
-    );
+    final greenInterCandidates =
+    allStations.where((s) => s.name == interName && s.line == "Green");
+    final MetroStation? greenInter =
+    greenInterCandidates.isNotEmpty ? greenInterCandidates.first : null;
+    final blueInterCandidates =
+    allStations.where((s) => s.name == interName && s.line == "Blue");
+    final MetroStation? blueInter =
+    blueInterCandidates.isNotEmpty ? blueInterCandidates.first : null;
 
     if (greenInter == null || blueInter == null) continue;
 

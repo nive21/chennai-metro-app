@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../models/station.dart';
 
@@ -5,18 +6,61 @@ class MetroMap extends StatelessWidget {
   final List<MetroStation> route;
   final List<MetroStation> allStations;
 
+  static const Map<String, String> layoutImages = {
+    'Saidapet': 'lib/data/station_layouts/saidapet.png',
+    'AG-DMS': 'lib/data/station_layouts/agdms.png',
+    'Anna Nagar East': 'lib/data/station_layouts/annanagar_east.png',
+    'Anna Nagar Tower': 'lib/data/station_layouts/annanagar_tower.png',
+  };
+
   const MetroMap({super.key, required this.route, required this.allStations});
 
   @override
   Widget build(BuildContext context) {
     const double width = 400;
-    final double height = (_maxStations + 2) * 70;
+    final double height = (_maxStations + 2) * 80;
+
+    final positions = computeStationOffsets(
+        Size(width, height), allStations);
+    final start = route.isNotEmpty ? route.first : null;
+    final end = route.isNotEmpty ? route.last : null;
+    final startOffset = start != null
+        ? positions['${start.name}-${start.line}']
+        : null;
+    final endOffset = end != null
+        ? positions['${end.name}-${end.line}']
+        : null;
+
     return SizedBox(
       width: width,
       height: height,
-      child: CustomPaint(
-        size: Size(width, height),
-        painter: MetroMapPainter(route, allStations),
+      child: Stack(
+        children: [
+          CustomPaint(
+            size: Size(width, height),
+            painter: MetroMapPainter(route, allStations),
+          ),
+          if (startOffset != null && layoutImages[start!.name] != null)
+            Positioned(
+              left: startOffset.dx - 25,
+              top: startOffset.dy - 25,
+              child: Image.asset(
+                layoutImages[start.name]!,
+                width: 50,
+                height: 50,
+              ),
+            ),
+          if (endOffset != null && layoutImages[end!.name] != null)
+            Positioned(
+              left: endOffset.dx - 25,
+              top: endOffset.dy - 25,
+              child: Image.asset(
+                layoutImages[end.name]!,
+                width: 50,
+                height: 50,
+              ),
+            ),
+        ],
       ),
     );
   }
@@ -54,102 +98,28 @@ class MetroMapPainter extends CustomPainter {
       ..strokeWidth = 4
       ..style = PaintingStyle.stroke;
 
-    const double spacing = 60.0;
     const double radius = 6.0;
-    final double leftX = size.width * 0.3;
-    final double rightX = size.width * 0.7;
+    const double crossGap = 25.0;
+
+    final positions = computeStationOffsets(size, allStations);
+    final List<MetroStation> blueStations = blueLine.reversed.toList();
     final double centerX = size.width * 0.5;
 
-    // sort stations north to south for blue line without mutating state
-    final List<MetroStation> blueStations = blueLine.reversed.toList();
-
-    final int blueCentral =
-    blueStations.indexWhere((s) => s.name.contains('Puratchi Thalaivar'));
-    final int blueAlandur =
-    blueStations.indexWhere((s) => s.name.contains('Arignar Anna Alandur'));
-    final int greenCentral =
-    greenLine.indexWhere((s) => s.name.contains('Puratchi Thalaivar'));
-    final int greenAlandur =
-    greenLine.indexWhere((s) => s.name.contains('Arignar Anna Alandur'));
-
-    final int topBlue = blueCentral;
-    final int topGreen = greenCentral;
-    final int betweenBlue = blueAlandur - blueCentral;
-    final int betweenGreen = greenAlandur - greenCentral;
-    final int bottomBlue = blueStations.length - blueAlandur - 1;
-    final int bottomGreen = greenLine.length - greenAlandur - 1;
-
-    final int topCount = topBlue > topGreen ? topBlue : topGreen;
-    final int middleCount =
-    betweenBlue > betweenGreen ? betweenBlue : betweenGreen;
-    final int bottomCount =
-    bottomBlue > bottomGreen ? bottomBlue : bottomGreen;
-
-    final double centralY = spacing * (topCount + 1);
-    final double alandurY = centralY + spacing * middleCount;
-    final double endY = alandurY + spacing * bottomCount;
-
-    double stepTopBlue =
-    topBlue == 0 ? 0 : centralY / topBlue;
-    double stepTopGreen =
-    topGreen == 0 ? 0 : centralY / topGreen;
-    double stepMiddleBlue =
-    betweenBlue == 0 ? 0 : (alandurY - centralY) / betweenBlue;
-    double stepMiddleGreen =
-    betweenGreen == 0 ? 0 : (alandurY - centralY) / betweenGreen;
-    double stepBottomBlue =
-    bottomBlue == 0 ? 0 : (endY - alandurY) / bottomBlue;
-    double stepBottomGreen =
-    bottomGreen == 0 ? 0 : (endY - alandurY) / bottomGreen;
-
-    double yForBlue(int i) {
-      if (i < blueCentral) {
-        return centralY - stepTopBlue * (blueCentral - i);
-      }
-      if (i == blueCentral) return centralY;
-      if (i <= blueAlandur) {
-        return centralY + stepMiddleBlue * (i - blueCentral);
-      }
-      return alandurY + stepBottomBlue * (i - blueAlandur);
-    }
-
-    double yForGreen(int i) {
-      if (i < greenCentral) {
-        return centralY - stepTopGreen * (greenCentral - i);
-      }
-      if (i == greenCentral) return centralY;
-      if (i <= greenAlandur) {
-        return centralY + stepMiddleGreen * (i - greenCentral);
-      }
-      return alandurY + stepBottomGreen * (i - greenAlandur);
-    }
-
-    double xForBlue(int i) {
-      if (i <= blueCentral) return leftX;
-      if (i <= blueAlandur) return rightX;
-      return leftX;
-    }
-
-    double xForGreen(int i) {
-      if (i <= greenCentral) return rightX;
-      if (i <= greenAlandur) return leftX;
-      return rightX;
-    }
-
-    const double crossGap = 15.0;
-
-    Path buildPath(List<MetroStation> stations, double Function(int) xf,
-        double Function(int) yf) {
+    Path buildPath(List<MetroStation> stations) {
       final Path path = Path();
       for (int i = 0; i < stations.length; i++) {
-        final double x = xf(i);
-        final double y = yf(i);
+        final Offset pos =
+        positions['${stations[i].name}-${stations[i].line}']!;
+        final double x = pos.dx;
+        final double y = pos.dy;
         if (i == 0) {
           path.moveTo(x, y);
           continue;
         }
-        final double prevX = xf(i - 1);
-        final double prevY = yf(i - 1);
+        final Offset prevPos =
+        positions['${stations[i - 1].name}-${stations[i - 1].line}']!;
+        final double prevX = prevPos.dx;
+        final double prevY = prevPos.dy;
         final MetroStation stationPrev = stations[i - 1];
         if (stationPrev.isInterchange && prevX != x) {
           path.lineTo(prevX, prevY - crossGap);
@@ -163,8 +133,8 @@ class MetroMapPainter extends CustomPainter {
       return path;
     }
 
-    final Path bluePath = buildPath(blueStations, xForBlue, yForBlue);
-    final Path greenPath = buildPath(greenLine, xForGreen, yForGreen);
+    final Path bluePath = buildPath(blueStations);
+    final Path greenPath = buildPath(greenLine);
     canvas.drawPath(bluePath, bluePaint);
     canvas.drawPath(greenPath, greenPaint);
 
@@ -202,15 +172,19 @@ class MetroMapPainter extends CustomPainter {
     for (int i = 0; i < blueStations.length; i++) {
       final station = blueStations[i];
       if (station.isInterchange) continue;
+      final Offset pos =
+      positions['${station.name}-${station.line}']!;
       drawStation(
-          station, xForBlue(i), yForBlue(i), Colors.blue, _isHighlight(station));
+          station, pos.dx, pos.dy, Colors.blue, _isHighlight(station));
     }
 
     for (int i = 0; i < greenLine.length; i++) {
       final station = greenLine[i];
       if (station.isInterchange) continue;
+      final Offset pos =
+      positions['${station.name}-${station.line}']!;
       drawStation(
-          station, xForGreen(i), yForGreen(i), Colors.green, _isHighlight(station));
+          station, pos.dx, pos.dy, Colors.green, _isHighlight(station));
     }
 
     // draw interchanges once in the middle
@@ -220,13 +194,11 @@ class MetroMapPainter extends CustomPainter {
     ];
 
     for (final station in interchanges) {
-      final int blueIndex =
-      blueStations.indexWhere((s) => s.name == station.name);
-      final int greenIndex =
-      greenLine.indexWhere((s) => s.name == station.name);
-      final double yBlue = blueIndex >= 0 ? yForBlue(blueIndex) : 0;
-      final double yGreen = greenIndex >= 0 ? yForGreen(greenIndex) : 0;
-      final double y = yBlue > yGreen ? yBlue : yGreen;
+      final double yBlue =
+          positions['${station.name}-Blue']?.dy ?? 0;
+      final double yGreen =
+          positions['${station.name}-Green']?.dy ?? 0;
+      final double y = math.max(yBlue, yGreen);
       drawStation(station, centerX, y, Colors.purple, _isHighlight(station));
     }
   }
@@ -249,4 +221,98 @@ class MetroMapPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
+}
+
+Map<String, Offset> computeStationOffsets(
+    Size size, List<MetroStation> allStations) {
+  const double spacing = 80.0;
+  final double leftX = size.width * 0.25;
+  final double rightX = size.width * 0.75;
+
+  final List<MetroStation> greenLine =
+  allStations.where((s) => s.line == 'Green').toList();
+  final List<MetroStation> blueLine =
+  allStations.where((s) => s.line == 'Blue').toList();
+  final List<MetroStation> blueStations = blueLine.reversed.toList();
+
+  final int blueCentral =
+  blueStations.indexWhere((s) => s.name.contains('Puratchi Thalaivar'));
+  final int blueAlandur =
+  blueStations.indexWhere((s) => s.name.contains('Arignar Anna Alandur'));
+  final int greenCentral =
+  greenLine.indexWhere((s) => s.name.contains('Puratchi Thalaivar'));
+  final int greenAlandur =
+  greenLine.indexWhere((s) => s.name.contains('Arignar Anna Alandur'));
+
+  final int topBlue = blueCentral;
+  final int topGreen = greenCentral;
+  final int betweenBlue = blueAlandur - blueCentral;
+  final int betweenGreen = greenAlandur - greenCentral;
+  final int bottomBlue = blueStations.length - blueAlandur - 1;
+  final int bottomGreen = greenLine.length - greenAlandur - 1;
+
+  final int topCount = math.max(topBlue, topGreen);
+  final int middleCount = math.max(betweenBlue, betweenGreen);
+  final int bottomCount = math.max(bottomBlue, bottomGreen);
+
+  final double centralY = spacing * (topCount + 1);
+  final double alandurY = centralY + spacing * middleCount;
+  final double endY = alandurY + spacing * bottomCount;
+
+  double stepTopBlue = topBlue == 0 ? 0 : centralY / topBlue;
+  double stepTopGreen = topGreen == 0 ? 0 : centralY / topGreen;
+  double stepMiddleBlue =
+  betweenBlue == 0 ? 0 : (alandurY - centralY) / betweenBlue;
+  double stepMiddleGreen =
+  betweenGreen == 0 ? 0 : (alandurY - centralY) / betweenGreen;
+  double stepBottomBlue =
+  bottomBlue == 0 ? 0 : (endY - alandurY) / bottomBlue;
+  double stepBottomGreen =
+  bottomGreen == 0 ? 0 : (endY - alandurY) / bottomGreen;
+
+  double yForBlue(int i) {
+    if (i < blueCentral) {
+      return centralY - stepTopBlue * (blueCentral - i);
+    }
+    if (i == blueCentral) return centralY;
+    if (i <= blueAlandur) {
+      return centralY + stepMiddleBlue * (i - blueCentral);
+    }
+    return alandurY + stepBottomBlue * (i - blueAlandur);
+  }
+
+  double yForGreen(int i) {
+    if (i < greenCentral) {
+      return centralY - stepTopGreen * (greenCentral - i);
+    }
+    if (i == greenCentral) return centralY;
+    if (i <= greenAlandur) {
+      return centralY + stepMiddleGreen * (i - greenCentral);
+    }
+    return alandurY + stepBottomGreen * (i - greenAlandur);
+  }
+
+  double xForBlue(int i) {
+    if (i <= blueCentral) return leftX;
+    if (i <= blueAlandur) return rightX;
+    return leftX;
+  }
+
+  double xForGreen(int i) {
+    if (i <= greenCentral) return rightX;
+    if (i <= greenAlandur) return leftX;
+    return rightX;
+  }
+
+  final Map<String, Offset> pos = {};
+  for (int i = 0; i < blueStations.length; i++) {
+    final s = blueStations[i];
+    pos['${s.name}-${s.line}'] = Offset(xForBlue(i), yForBlue(i));
+  }
+  for (int i = 0; i < greenLine.length; i++) {
+    final s = greenLine[i];
+    pos['${s.name}-${s.line}'] = Offset(xForGreen(i), yForGreen(i));
+  }
+
+  return pos;
 }

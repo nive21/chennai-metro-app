@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../data/metro_data.dart';
 import '../models/station.dart';
@@ -28,6 +29,15 @@ class RouteResultScreen extends StatelessWidget {
       }
     }
 
+    final int maxStations = math.max(
+        allStations.where((s) => s.line == 'Green').length,
+        allStations.where((s) => s.line == 'Blue').length);
+    const double width = 400;
+    final double height = (maxStations + 2) * 80;
+    final positions = computeStationOffsets(Size(width, height), allStations);
+    final transformation = _initialTransformation(Size(width, height), positions, route);
+    final controller = TransformationController()..value = transformation;
+
     return Scaffold(
       appBar: AppBar(title: const Text("Your Route")),
       body: route.isEmpty
@@ -35,6 +45,7 @@ class RouteResultScreen extends StatelessWidget {
           : Stack(
         children: [
           InteractiveViewer(
+            transformationController: controller,
             minScale: 0.5,
             maxScale: 2.0,
             panEnabled: true,
@@ -74,7 +85,7 @@ class RouteResultScreen extends StatelessWidget {
                     const SizedBox(height: 8),
                     ...instructions
                         .split('\n')
-                        .map((line) => Text('• $line')),
+                        .map((line) => Text('\u2022 $line')),
                   ],
                 ),
               );
@@ -94,5 +105,30 @@ class RouteResultScreen extends StatelessWidget {
         Text('Platform ${station.platform}'),
       ],
     );
+  }
+
+  Matrix4 _initialTransformation(
+      Size mapSize, Map<String, Offset> positions, List<MetroStation> route) {
+    if (route.isEmpty) return Matrix4.identity();
+    final offsets =
+    route.map((s) => positions['${s.name}-${s.line}']!).toList();
+    final minX = offsets.map((o) => o.dx).reduce(math.min);
+    final maxX = offsets.map((o) => o.dx).reduce(math.max);
+    final minY = offsets.map((o) => o.dy).reduce(math.min);
+    final maxY = offsets.map((o) => o.dy).reduce(math.max);
+
+    const double margin = 40;
+    final double routeWidth = (maxX - minX) + margin * 2;
+    final double routeHeight = (maxY - minY) + margin * 2;
+    final double scaleX = mapSize.width / routeWidth;
+    final double scaleY = mapSize.height / routeHeight;
+    final double scale = math.min(scaleX, scaleY);
+
+    final Offset center = Offset((minX + maxX) / 2, (minY + maxY) / 2);
+
+    return Matrix4.identity()
+      ..scale(scale)
+      ..translate(mapSize.width / 2 / scale - center.dx,
+          mapSize.height / 2 / scale - center.dy);
   }
 }
