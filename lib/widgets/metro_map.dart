@@ -74,6 +74,7 @@ class MetroMap extends StatelessWidget {
 }
 
 class MetroMapPainter extends CustomPainter {
+
   final List<MetroStation> route;
   final List<MetroStation> allStations;
 
@@ -99,42 +100,15 @@ class MetroMapPainter extends CustomPainter {
       ..style = PaintingStyle.stroke;
 
     const double radius = 6.0;
-    const double crossGap = 25.0;
 
     final positions = computeStationOffsets(size, allStations);
-    final List<MetroStation> blueStations = blueLine.reversed.toList();
-    final double centerX = size.width * 0.5;
+    final _MapTransform transform = _computeTransform(size, allStations);
 
-    Path buildPath(List<MetroStation> stations) {
-      final Path path = Path();
-      for (int i = 0; i < stations.length; i++) {
-        final Offset pos =
-        positions['${stations[i].name}-${stations[i].line}']!;
-        final double x = pos.dx;
-        final double y = pos.dy;
-        if (i == 0) {
-          path.moveTo(x, y);
-          continue;
-        }
-        final Offset prevPos =
-        positions['${stations[i - 1].name}-${stations[i - 1].line}']!;
-        final double prevX = prevPos.dx;
-        final double prevY = prevPos.dy;
-        final MetroStation stationPrev = stations[i - 1];
-        if (stationPrev.isInterchange && prevX != x) {
-          path.lineTo(prevX, prevY - crossGap);
-          path.lineTo(centerX, prevY);
-          path.lineTo(x, prevY + crossGap);
-          path.lineTo(x, y);
-        } else {
-          path.lineTo(x, y);
-        }
-      }
-      return path;
-    }
+    final List<MetroStation> blueStations = blueLine;
+    final List<MetroStation> greenStations = greenLine;
 
-    final Path bluePath = buildPath(blueStations);
-    final Path greenPath = buildPath(greenLine);
+    Path bluePath = _buildBluePath(transform);
+    Path greenPath = _buildGreenPath(transform);
     canvas.drawPath(bluePath, bluePaint);
     canvas.drawPath(greenPath, greenPaint);
 
@@ -169,37 +143,18 @@ class MetroMapPainter extends CustomPainter {
     }
 
     // draw regular stations
-    for (int i = 0; i < blueStations.length; i++) {
-      final station = blueStations[i];
-      if (station.isInterchange) continue;
-      final Offset pos =
-      positions['${station.name}-${station.line}']!;
-      drawStation(
-          station, pos.dx, pos.dy, Colors.blue, _isHighlight(station));
+    for (final station in blueStations) {
+      final Offset pos = positions['${station.name}-${station.line}']!;
+      final Color color =
+      station.isInterchange ? Colors.purple : Colors.blue;
+      drawStation(station, pos.dx, pos.dy, color, _isHighlight(station));
     }
 
-    for (int i = 0; i < greenLine.length; i++) {
-      final station = greenLine[i];
-      if (station.isInterchange) continue;
-      final Offset pos =
-      positions['${station.name}-${station.line}']!;
-      drawStation(
-          station, pos.dx, pos.dy, Colors.green, _isHighlight(station));
-    }
-
-    // draw interchanges once in the middle
-    final List<MetroStation> interchanges = [
-      blueStations.firstWhere((s) => s.name.contains('Puratchi Thalaivar')),
-      blueStations.firstWhere((s) => s.name.contains('Arignar Anna Alandur')),
-    ];
-
-    for (final station in interchanges) {
-      final double yBlue =
-          positions['${station.name}-Blue']?.dy ?? 0;
-      final double yGreen =
-          positions['${station.name}-Green']?.dy ?? 0;
-      final double y = math.max(yBlue, yGreen);
-      drawStation(station, centerX, y, Colors.purple, _isHighlight(station));
+    for (final station in greenStations) {
+      final Offset pos = positions['${station.name}-${station.line}']!;
+      final Color color =
+      station.isInterchange ? Colors.purple : Colors.green;
+      drawStation(station, pos.dx, pos.dy, color, _isHighlight(station));
     }
   }
 
@@ -225,94 +180,93 @@ class MetroMapPainter extends CustomPainter {
 
 Map<String, Offset> computeStationOffsets(
     Size size, List<MetroStation> allStations) {
-  const double spacing = 80.0;
-  final double leftX = size.width * 0.25;
-  final double rightX = size.width * 0.75;
+  final xs = allStations.map((s) => s.x).toList();
+  final ys = allStations.map((s) => s.y).toList();
 
-  final List<MetroStation> greenLine =
-  allStations.where((s) => s.line == 'Green').toList();
-  final List<MetroStation> blueLine =
-  allStations.where((s) => s.line == 'Blue').toList();
-  final List<MetroStation> blueStations = blueLine.reversed.toList();
+  final double minX = xs.reduce(math.min);
+  final double maxX = xs.reduce(math.max);
+  final double minY = ys.reduce(math.min);
+  final double maxY = ys.reduce(math.max);
 
-  final int blueCentral =
-  blueStations.indexWhere((s) => s.name.contains('Puratchi Thalaivar'));
-  final int blueAlandur =
-  blueStations.indexWhere((s) => s.name.contains('Arignar Anna Alandur'));
-  final int greenCentral =
-  greenLine.indexWhere((s) => s.name.contains('Puratchi Thalaivar'));
-  final int greenAlandur =
-  greenLine.indexWhere((s) => s.name.contains('Arignar Anna Alandur'));
+  final double scaleX = size.width / (maxX - minX);
+  final double scaleY = size.height / (maxY - minY);
+  final double scale = math.min(scaleX, scaleY);
 
-  final int topBlue = blueCentral;
-  final int topGreen = greenCentral;
-  final int betweenBlue = blueAlandur - blueCentral;
-  final int betweenGreen = greenAlandur - greenCentral;
-  final int bottomBlue = blueStations.length - blueAlandur - 1;
-  final int bottomGreen = greenLine.length - greenAlandur - 1;
-
-  final int topCount = math.max(topBlue, topGreen);
-  final int middleCount = math.max(betweenBlue, betweenGreen);
-  final int bottomCount = math.max(bottomBlue, bottomGreen);
-
-  final double centralY = spacing * (topCount + 1);
-  final double alandurY = centralY + spacing * middleCount;
-  final double endY = alandurY + spacing * bottomCount;
-
-  double stepTopBlue = topBlue == 0 ? 0 : centralY / topBlue;
-  double stepTopGreen = topGreen == 0 ? 0 : centralY / topGreen;
-  double stepMiddleBlue =
-  betweenBlue == 0 ? 0 : (alandurY - centralY) / betweenBlue;
-  double stepMiddleGreen =
-  betweenGreen == 0 ? 0 : (alandurY - centralY) / betweenGreen;
-  double stepBottomBlue =
-  bottomBlue == 0 ? 0 : (endY - alandurY) / bottomBlue;
-  double stepBottomGreen =
-  bottomGreen == 0 ? 0 : (endY - alandurY) / bottomGreen;
-
-  double yForBlue(int i) {
-    if (i < blueCentral) {
-      return centralY - stepTopBlue * (blueCentral - i);
-    }
-    if (i == blueCentral) return centralY;
-    if (i <= blueAlandur) {
-      return centralY + stepMiddleBlue * (i - blueCentral);
-    }
-    return alandurY + stepBottomBlue * (i - blueAlandur);
-  }
-
-  double yForGreen(int i) {
-    if (i < greenCentral) {
-      return centralY - stepTopGreen * (greenCentral - i);
-    }
-    if (i == greenCentral) return centralY;
-    if (i <= greenAlandur) {
-      return centralY + stepMiddleGreen * (i - greenCentral);
-    }
-    return alandurY + stepBottomGreen * (i - greenAlandur);
-  }
-
-  double xForBlue(int i) {
-    if (i <= blueCentral) return leftX;
-    if (i <= blueAlandur) return rightX;
-    return leftX;
-  }
-
-  double xForGreen(int i) {
-    if (i <= greenCentral) return rightX;
-    if (i <= greenAlandur) return leftX;
-    return rightX;
-  }
+  final double offsetX = (size.width - (maxX - minX) * scale) / 2 - minX * scale;
+  final double offsetY = (size.height - (maxY - minY) * scale) / 2 - minY * scale;
 
   final Map<String, Offset> pos = {};
-  for (int i = 0; i < blueStations.length; i++) {
-    final s = blueStations[i];
-    pos['${s.name}-${s.line}'] = Offset(xForBlue(i), yForBlue(i));
-  }
-  for (int i = 0; i < greenLine.length; i++) {
-    final s = greenLine[i];
-    pos['${s.name}-${s.line}'] = Offset(xForGreen(i), yForGreen(i));
+  for (final s in allStations) {
+    pos['${s.name}-${s.line}'] =
+        Offset(s.x * scale + offsetX, s.y * scale + offsetY);
   }
 
   return pos;
+}
+
+class _MapTransform {
+  final double scale;
+  final double offsetX;
+  final double offsetY;
+  _MapTransform(this.scale, this.offsetX, this.offsetY);
+}
+
+_MapTransform _computeTransform(Size size, List<MetroStation> allStations) {
+  final xs = allStations.map((s) => s.x).toList();
+  final ys = allStations.map((s) => s.y).toList();
+  final double minX = xs.reduce(math.min);
+  final double maxX = xs.reduce(math.max);
+  final double minY = ys.reduce(math.min);
+  final double maxY = ys.reduce(math.max);
+
+  final double scaleX = size.width / (maxX - minX);
+  final double scaleY = size.height / (maxY - minY);
+  final double scale = math.min(scaleX, scaleY);
+
+  final double offsetX = (size.width - (maxX - minX) * scale) / 2 - minX * scale;
+  final double offsetY = (size.height - (maxY - minY) * scale) / 2 - minY * scale;
+
+  return _MapTransform(scale, offsetX, offsetY);
+}
+
+Path _buildBluePath(_MapTransform t) {
+  final s = t.scale;
+  final dx = t.offsetX;
+  final dy = t.offsetY;
+  return Path()
+    ..moveTo(dx + 1962.35 * s, dy + 128.248 * s)
+    ..lineTo(dx + 1962.35 * s, dy + 1061.33 * s)
+    ..cubicTo(dx + 1962.35 * s, dy + 1083.08 * s, dx + 1944.72 * s,
+        dy + 1100.71 * s, dx + 1922.97 * s, dy + 1100.71 * s)
+    ..lineTo(dx + 1792.45 * s, dy + 1100.71 * s)
+    ..cubicTo(dx + 1770.69 * s, dy + 1100.71 * s, dx + 1753.06 * s,
+        dy + 1118.35 * s, dx + 1753.06 * s, dy + 1140.1 * s)
+    ..lineTo(dx + 1753.06 * s, dy + 1293.19 * s)
+    ..cubicTo(dx + 1753.06 * s, dy + 1303.63 * s, dx + 1748.92 * s,
+        dy + 1313.64 * s, dx + 1741.53 * s, dy + 1321.03 * s)
+    ..lineTo(dx + 572.068 * s, dy + 2490.99 * s);
+}
+
+Path _buildGreenPath(_MapTransform t) {
+  final s = t.scale;
+  final dx = t.offsetX;
+  final dy = t.offsetY;
+  return Path()
+    ..moveTo(dx + 850.276 * s, dy + 2346.59 * s)
+    ..lineTo(dx + 850.276 * s, dy + 1279.45 * s)
+    ..cubicTo(dx + 850.276 * s, dy + 1257.7 * s, dx + 832.643 * s,
+        dy + 1240.07 * s, dx + 810.892 * s, dy + 1240.07 * s)
+    ..lineTo(dx + 678.857 * s, dy + 1240.07 * s)
+    ..cubicTo(dx + 657.107 * s, dy + 1240.07 * s, dx + 639.474 * s,
+        dy + 1222.44 * s, dx + 639.474 * s, dy + 1200.69 * s)
+    ..lineTo(dx + 639.474 * s, dy + 933.082 * s)
+    ..cubicTo(dx + 639.474 * s, dy + 911.331 * s, dx + 657.107 * s,
+        dy + 893.698 * s, dx + 678.857 * s, dy + 893.698 * s)
+    ..lineTo(dx + 1089.35 * s, dy + 893.698 * s)
+    ..cubicTo(dx + 1111.1 * s, dy + 893.698 * s, dx + 1128.74 * s,
+        dy + 911.331 * s, dx + 1128.74 * s, dy + 933.082 * s)
+    ..lineTo(dx + 1128.74 * s, dy + 1061.33 * s)
+    ..cubicTo(dx + 1128.74 * s, dy + 1083.08 * s, dx + 1146.37 * s,
+        dy + 1100.71 * s, dx + 1168.12 * s, dy + 1100.71 * s)
+    ..lineTo(dx + 1818.7 * s, dy + 1100.71 * s);
 }
