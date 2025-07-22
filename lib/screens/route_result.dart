@@ -59,34 +59,41 @@ class RouteResultScreen extends StatelessWidget {
             minChildSize: 0.1,
             maxChildSize: 0.8,
             builder: (context, controller) {
+              final theme = Theme.of(context);
               return Container(
-                decoration: const BoxDecoration(
-                    color: Colors.white,
-                    borderRadius:
-                    BorderRadius.vertical(top: Radius.circular(16))),
-                child: ListView(
+                decoration: BoxDecoration(
+                  color: theme.cardColor,
+                  borderRadius:
+                  const BorderRadius.vertical(top: Radius.circular(16)),
+                ),
+                child: SingleChildScrollView(
                   controller: controller,
                   padding: const EdgeInsets.all(16),
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      children: [
-                        if (start != null) _stationTile(start),
-                        if (changeover != null) _stationTile(changeover!),
-                        if (end != null) _stationTile(end),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    const Text(
-                      "Instructions:",
-                      style:
-                      TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 8),
-                    ...instructions
-                        .split('\n')
-                        .map((line) => Text('\u2022 $line')),
-                  ],
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: [
+                          if (start != null) _stationTile(start),
+                          if (changeover != null) _stationTile(changeover),
+                          if (end != null) _stationTile(end),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      const Text(
+                        "Instructions:",
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 8),
+                      ...instructions
+                          .split('\n')
+                          .map((line) => Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 2),
+                        child: Text('\u2022 $line'),
+                      )),
+                    ],
+                  ),
                 ),
               );
             },

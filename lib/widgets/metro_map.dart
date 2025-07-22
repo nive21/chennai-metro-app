@@ -112,7 +112,7 @@ class MetroMapPainter extends CustomPainter {
     canvas.drawPath(bluePath, bluePaint);
     canvas.drawPath(greenPath, greenPaint);
 
-    final labelStyle = const TextStyle(color: Colors.black, fontSize: 12);
+    final labelStyle = const TextStyle(color: Colors.white, fontSize: 12);
 
     void drawStation(
         MetroStation station, double x, double y, Color color, bool highlight) {
@@ -135,8 +135,8 @@ class MetroMapPainter extends CustomPainter {
         text: TextSpan(
             text: station.name,
             style:
-            labelStyle.copyWith(color: inRoute ? Colors.black : Colors.grey)),
-        textDirection: TextDirection.ltr,
+            labelStyle.copyWith(
+                color: inRoute ? Colors.white : Colors.grey.shade300)),        textDirection: TextDirection.ltr,
       );
       tp.layout();
       tp.paint(canvas, Offset(x + 10, y - 7));
